@@ -2,6 +2,8 @@ package store
 
 import (
 	"errors"
+	"fmt"
+	"os"
 )
 
 type Store struct {
@@ -38,4 +40,8 @@ func (s Store) Del(key string) bool {
 	}
 	delete(s.dictionary, key)
 	return true
+}
+
+func (s Store) Debug() {
+	fmt.Fprintln(os.Stdout, s)
 }
