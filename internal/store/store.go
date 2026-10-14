@@ -8,6 +8,12 @@ type Store struct {
 	dictionary map[string]string
 }
 
+func CreateNewStore() Store {
+	return Store{
+		dictionary: map[string]string{},
+	}
+}
+
 func (s Store) Exists(key string) bool {
 	_, doesExist := s.dictionary[key]
 	return doesExist
