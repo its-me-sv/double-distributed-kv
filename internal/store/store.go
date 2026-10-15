@@ -31,6 +31,7 @@ func (s Store) Get(key string) (string, error) {
 	if !s.Exists(key) {
 		return "", errors.New("key not found")
 	}
+
 	return s.dictionary[key], nil
 }
 

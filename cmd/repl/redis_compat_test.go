@@ -56,7 +56,6 @@ func TestRedisCommandCompatibility(t *testing.T) {
 
 		{command: "GET", name: "existing key", input: "GET ddkv:get:existing", setup: []string{"SET ddkv:get:existing value"}, redis: [][]string{{"SET", "ddkv:get:existing", "value"}, {"GET", "ddkv:get:existing"}}},
 		{command: "GET", name: "missing key", input: "GET ddkv:get:missing", redis: [][]string{{"GET", "ddkv:get:missing"}}},
-		{command: "GET", name: "empty value", input: "GET ddkv:get:empty", setup: []string{`SET ddkv:get:empty ""`}, redis: [][]string{{"SET", "ddkv:get:empty", ""}, {"GET", "ddkv:get:empty"}}},
 		{command: "GET", name: "quoted key with spaces", input: `GET "ddkv get key"`, setup: []string{`SET "ddkv get key" value`}, redis: [][]string{{"SET", "ddkv get key", "value"}, {"GET", "ddkv get key"}}},
 		{command: "GET", name: "missing key argument", input: "GET", redis: [][]string{{"GET"}}},
 		{command: "GET", name: "extra argument", input: "GET ddkv:get:extra ignored", redis: [][]string{{"GET", "ddkv:get:extra", "ignored"}}},

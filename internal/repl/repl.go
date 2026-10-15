@@ -9,6 +9,7 @@ import (
 	"github.com/its-me-sv/double-distributed-kv/internal/commands"
 	"github.com/its-me-sv/double-distributed-kv/internal/config"
 	"github.com/its-me-sv/double-distributed-kv/internal/store"
+	"github.com/its-me-sv/double-distributed-kv/internal/utils"
 )
 
 func StartRepl(cfg config.Config, str store.Store) {
@@ -21,7 +22,11 @@ func StartRepl(cfg config.Config, str store.Store) {
 		}
 
 		input := scanner.Text()
-		cleanedInput := cleanUserInput(input)
+		cleanedInput, err := utils.Tokenize(input)
+		if err != nil {
+			fmt.Fprintln(os.Stdout, "ERR", err.Error())
+			continue
+		}
 
 		if len(cleanedInput) == 0 {
 			continue
@@ -53,10 +58,6 @@ func StartRepl(cfg config.Config, str store.Store) {
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "ERR failed to read input")
 	}
-}
-
-func cleanUserInput(text string) []string {
-	return strings.Fields(text)
 }
 
 type commandCallback = func(store.Store, ...string) error
