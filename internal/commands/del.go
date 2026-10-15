@@ -21,7 +21,7 @@ func DelCommand(str store.Store, args ...string) error {
 		}
 	}
 
-	fmt.Fprintln(os.Stdout, "(integer)", deletedKeysCount)
+	fmt.Fprintln(os.Stdout, deletedKeysCount)
 
 	return nil
 }

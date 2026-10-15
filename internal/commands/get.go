@@ -13,10 +13,7 @@ func GetCommand(str store.Store, args ...string) error {
 		return errors.New("wrong number of arguments for 'get' command")
 	}
 
-	value, err := str.Get(args[0])
-	if err != nil {
-		return err
-	}
+	value, _ := str.Get(args[0])
 
 	fmt.Fprintln(os.Stdout, value)
 

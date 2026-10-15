@@ -21,7 +21,7 @@ func ExistsCommand(str store.Store, args ...string) error {
 		}
 	}
 
-	fmt.Fprintln(os.Stdout, "(integer)", keysFound)
+	fmt.Fprintln(os.Stdout, keysFound)
 
 	return nil
 }

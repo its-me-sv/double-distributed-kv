@@ -41,17 +41,17 @@ func StartRepl(cfg config.Config, str store.Store) {
 
 		command, commandExists := getCommands()[commandName]
 		if !commandExists {
-			fmt.Fprintln(os.Stdout, "(error) unknown command")
+			fmt.Fprintln(os.Stdout, "ERR unknown command")
 			continue
 		}
 
 		if err := command(str, arguments...); err != nil {
-			fmt.Fprintln(os.Stdout, "(error)", err.Error())
+			fmt.Fprintln(os.Stdout, "ERR", err.Error())
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "(error) failed to read input")
+		fmt.Fprintln(os.Stderr, "ERR failed to read input")
 	}
 }
 

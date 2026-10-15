@@ -9,17 +9,16 @@ import (
 )
 
 func SetCommand(str store.Store, args ...string) error {
+	if len(args) > 2 {
+		return errors.New("syntax error")
+	}
+
 	if len(args) != 2 {
 		return errors.New("wrong number of arguments for 'set' command")
 	}
 
-	wasUpdated := str.Set(args[0], args[1])
-
-	message := "INSERT"
-	if wasUpdated {
-		message = "UPSERT"
-	}
-	fmt.Fprintln(os.Stdout, message)
+	str.Set(args[0], args[1])
+	fmt.Fprintln(os.Stdout, "OK")
 
 	return nil
 }
