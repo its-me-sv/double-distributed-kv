@@ -63,8 +63,10 @@ type commandCallback = func(store.Store, ...string) error
 
 func getCommands() map[string]commandCallback {
 	return map[string]commandCallback{
-		"exit": commands.ExitCommand,
-		"set":  commands.SetCommand,
-		"get":  commands.GetCommand,
+		"exit":   commands.ExitCommand,
+		"set":    commands.SetCommand,
+		"get":    commands.GetCommand,
+		"del":    commands.DelCommand,
+		"exists": commands.ExistsCommand,
 	}
 }
