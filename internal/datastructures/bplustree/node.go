@@ -1,4 +1,4 @@
-package datastructures
+package bplustree
 
 import (
 	"bytes"
@@ -18,50 +18,50 @@ import (
 // |  2B  |  2B   |   2×8B   |  2×2B   | 4B + 2B + 2B + 4B + 2B + 5B     |        |
 
 const (
-	BTREE_PAGE_SIZE    = 4096
-	BTREE_MAX_KEY_SIZE = 1000
-	BTREE_MAX_VAL_SIZE = 3000
+	PAGE_SIZE    = 4096
+	MAX_KEY_SIZE = 1000
+	MAX_VAL_SIZE = 3000
 )
 
 const (
-	BNODE_INTERNAL = 1
-	BNODE_LEAF     = 2
+	NODE_INTERNAL = 1
+	NODE_LEAF     = 2
 )
 
-type BNode []byte
+type Node []byte
 
 // read node type
-func (node BNode) btype() uint16 {
+func (node Node) btype() uint16 {
 	return binary.LittleEndian.Uint16(node[0:2])
 }
 
 // read no. of keys
-func (node BNode) nkeys() uint16 {
+func (node Node) nkeys() uint16 {
 	return binary.LittleEndian.Uint16(node[2:4])
 }
 
 // write header
-func (node BNode) setHeader(btype uint16, nkeys uint16) {
+func (node Node) SetHeader(btype uint16, nkeys uint16) {
 	binary.LittleEndian.PutUint16(node[0:2], btype)
 	binary.LittleEndian.PutUint16(node[2:4], nkeys)
 }
 
 // read child pointers (internal node)
-func (node BNode) getPtr(idx uint16) uint16 {
+func (node Node) getPtr(idx uint16) uint16 {
 	utils.Assert(idx < node.nkeys())
 	pos := 4 + 8*idx
 	return binary.LittleEndian.Uint16(node[pos:])
 }
 
 // write child pointers (internal node)
-func (node BNode) setPtr(idx uint16, val uint16) {
+func (node Node) setPtr(idx uint16, val uint16) {
 	utils.Assert(idx < node.nkeys())
 	pos := 4 + 8*idx
 	binary.LittleEndian.PutUint16(node[pos:], val)
 }
 
 // read offset array (to locate nth key)
-func (node BNode) getOffset(idx uint16) uint16 {
+func (node Node) getOffset(idx uint16) uint16 {
 	if idx == 0 {
 		return 0
 	}
@@ -70,19 +70,19 @@ func (node BNode) getOffset(idx uint16) uint16 {
 }
 
 // write offset value array
-func (node BNode) setOffset(idx uint16, value uint16) {
+func (node Node) setOffset(idx uint16, value uint16) {
 	pos := 4*8*node.nkeys() + 2*(idx-1)
 	binary.LittleEndian.PutUint16(node[pos:], value)
 }
 
 // read position of nth key
-func (node BNode) kvPos(idx uint16) uint16 {
+func (node Node) kvPos(idx uint16) uint16 {
 	utils.Assert(idx <= node.nkeys())
 	return 4 + 8*node.nkeys() + 2*node.nkeys() + node.getOffset(idx)
 }
 
 // read nth key
-func (node BNode) getKey(idx uint16) []byte {
+func (node Node) GetKey(idx uint16) []byte {
 	utils.Assert(idx < node.nkeys())
 	pos := node.kvPos(idx)
 	keyLen := binary.LittleEndian.Uint16(node[pos:])
@@ -90,7 +90,7 @@ func (node BNode) getKey(idx uint16) []byte {
 }
 
 // read nth key value (leaf nodes)
-func (node BNode) getVal(idx uint16) []byte {
+func (node Node) GetVal(idx uint16) []byte {
 	utils.Assert(idx < node.nkeys())
 	pos := node.kvPos(idx)
 	keyLen := binary.LittleEndian.Uint16(node[pos:])
@@ -99,7 +99,7 @@ func (node BNode) getVal(idx uint16) []byte {
 }
 
 // node size (in bytes)
-func (node BNode) nbytes() uint16 {
+func (node Node) nbytes() uint16 {
 	return node.kvPos(node.nkeys())
 }
 
@@ -108,7 +108,7 @@ func (node BNode) nbytes() uint16 {
 // key, val - the KV pair (empty for internal nodes)
 // assumption - keys are added in order because uses previous
 // values of the offsets array to locate the KV
-func bNodeAppendKV(node BNode, idx uint16, ptr uint16, key []byte, val []byte) {
+func NodeAppendKV(node Node, idx uint16, ptr uint16, key []byte, val []byte) {
 	// pointers
 	node.setPtr(idx, ptr)
 
@@ -130,41 +130,41 @@ func bNodeAppendKV(node BNode, idx uint16, ptr uint16, key []byte, val []byte) {
 }
 
 // inserting new key at position idx
-func bLeafInsert(new, old BNode, idx uint16, key, val []byte) {
-	new.setHeader(BNODE_LEAF, old.nkeys()+1)
+func LeafInsert(new, old Node, idx uint16, key, val []byte) {
+	new.SetHeader(NODE_LEAF, old.nkeys()+1)
 	// copy keys before index
-	bNodeAppendRange(new, old, 0, 0, idx)
+	NodeAppendRange(new, old, 0, 0, idx)
 	// insert the key
-	bNodeAppendKV(new, idx, 0, key, val)
+	NodeAppendKV(new, idx, 0, key, val)
 	// copy keys after index
-	bNodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx)
+	NodeAppendRange(new, old, idx+1, idx, old.nkeys()-idx)
 }
 
 // updating existing key's value if exists
-func bLeafUpdate(new, old BNode, idx uint16, key, val []byte) {
-	new.setHeader(BNODE_LEAF, old.nkeys())
-	bNodeAppendRange(new, old, 0, 0, idx)
-	bNodeAppendKV(new, idx, 0, key, val)
-	bNodeAppendRange(new, old, idx+1, idx+1, old.nkeys()-(idx+1))
+func LeafUpdate(new, old Node, idx uint16, key, val []byte) {
+	new.SetHeader(NODE_LEAF, old.nkeys())
+	NodeAppendRange(new, old, 0, 0, idx)
+	NodeAppendKV(new, idx, 0, key, val)
+	NodeAppendRange(new, old, idx+1, idx+1, old.nkeys()-(idx+1))
 }
 
 // insert or update based on key availability using lookup
-func bLeafSet(new, old BNode, key, val []byte) {
-	idx := bNodeLookupLS(old, key)
-	if bytes.Equal(key, old.getKey(idx)) {
-		bLeafUpdate(new, old, idx, key, val)
+func LeafSet(new, old Node, key, val []byte) {
+	idx := NodeLookupLS(old, key)
+	if bytes.Equal(key, old.GetKey(idx)) {
+		LeafUpdate(new, old, idx, key, val)
 	} else {
-		bLeafInsert(new, old, idx+1, key, val)
+		LeafInsert(new, old, idx+1, key, val)
 	}
 }
 
 // use to find key or closet pos to key to maintain sortorder
-func bNodeLookupLS(node BNode, key []byte) uint16 {
+func NodeLookupLS(node Node, key []byte) uint16 {
 	nkeys := node.nkeys()
 
 	var i uint16
 	for i = 0; i < nkeys; i += 1 {
-		cmp := bytes.Compare(node.getKey(i), key)
+		cmp := bytes.Compare(node.GetKey(i), key)
 		if cmp == 0 {
 			return i
 		}
@@ -177,15 +177,15 @@ func bNodeLookupLS(node BNode, key []byte) uint16 {
 }
 
 // copying multiple KVs and pointers into position
-func bNodeAppendRange(new, old BNode, dstNew, srcOld uint16, n uint16) {
+func NodeAppendRange(new, old Node, dstNew, srcOld uint16, n uint16) {
 	for i := uint16(0); i < n; i += 1 {
 		dst, src := dstNew+i, srcOld+i
-		bNodeAppendKV(new, dst, old.getPtr(src), old.getKey(src), old.getVal(src))
+		NodeAppendKV(new, dst, old.getPtr(src), old.GetKey(src), old.GetVal(src))
 	}
 }
 
 // splitting oversized nodes into 2
-func bNodeSplitInto2(left, right, old BNode) {
+func NodeSplitInto2(left, right, old Node) {
 	utils.Assert(old.nkeys() >= 2)
 	// initial size
 	nLeft := old.nkeys() / 2
@@ -194,7 +194,7 @@ func bNodeSplitInto2(left, right, old BNode) {
 	leftBytes := func() uint16 {
 		return 4 + 8*nLeft + 2*nLeft + old.getOffset(nLeft)
 	}
-	for leftBytes() > BTREE_PAGE_SIZE {
+	for leftBytes() > PAGE_SIZE {
 		nLeft -= 1
 	}
 	utils.Assert(nLeft >= 1)
@@ -203,45 +203,45 @@ func bNodeSplitInto2(left, right, old BNode) {
 	rightBytes := func() uint16 {
 		return old.nbytes() - leftBytes() + 4
 	}
-	for rightBytes() > BTREE_PAGE_SIZE {
+	for rightBytes() > PAGE_SIZE {
 		nLeft += 1
 	}
 	utils.Assert(nLeft < old.nkeys())
 	nRight := old.nkeys() - nLeft
 
 	// new nodes
-	left.setHeader(old.btype(), nLeft)
-	right.setHeader(old.btype(), nRight)
-	bNodeAppendRange(left, old, 0, 0, nLeft)
-	bNodeAppendRange(right, old, 0, nLeft, nRight)
+	left.SetHeader(old.btype(), nLeft)
+	right.SetHeader(old.btype(), nRight)
+	NodeAppendRange(left, old, 0, 0, nLeft)
+	NodeAppendRange(right, old, 0, nLeft, nRight)
 
 	// left half could still be too big
-	utils.Assert(right.nbytes() <= BTREE_PAGE_SIZE)
+	utils.Assert(right.nbytes() <= PAGE_SIZE)
 }
 
 // splitting too large oversized nodes into 3
-func bNodeSplitInto3(old BNode) (uint16, [3]BNode) {
+func NodeSplitInto3(old Node) (uint16, [3]Node) {
 	// no splitting - 1 node
-	if old.nbytes() <= BTREE_PAGE_SIZE {
-		old = old[:BTREE_PAGE_SIZE]
-		return 1, [3]BNode{old}
+	if old.nbytes() <= PAGE_SIZE {
+		old = old[:PAGE_SIZE]
+		return 1, [3]Node{old}
 	}
 
-	left := BNode(make([]byte, 2*BTREE_PAGE_SIZE))
-	right := BNode(make([]byte, BTREE_PAGE_SIZE))
-	bNodeSplitInto2(left, right, old)
+	left := Node(make([]byte, 2*PAGE_SIZE))
+	right := Node(make([]byte, PAGE_SIZE))
+	NodeSplitInto2(left, right, old)
 
 	// not too large but just oversized - 2 nodes
-	if left.nbytes() <= BTREE_PAGE_SIZE {
-		left := left[:BTREE_PAGE_SIZE]
-		return 2, [3]BNode{left, right}
+	if left.nbytes() <= PAGE_SIZE {
+		left := left[:PAGE_SIZE]
+		return 2, [3]Node{left, right}
 	}
 
 	// when too large oversized - 3 nodes
-	leftOfLeft := BNode(make([]byte, BTREE_PAGE_SIZE))
-	middle := BNode(make([]byte, BTREE_PAGE_SIZE))
-	bNodeSplitInto2(leftOfLeft, middle, left)
-	utils.Assert(leftOfLeft.nbytes() <= BTREE_PAGE_SIZE)
+	leftOfLeft := Node(make([]byte, PAGE_SIZE))
+	middle := Node(make([]byte, PAGE_SIZE))
+	NodeSplitInto2(leftOfLeft, middle, left)
+	utils.Assert(leftOfLeft.nbytes() <= PAGE_SIZE)
 
-	return 3, [3]BNode{leftOfLeft, middle, right}
+	return 3, [3]Node{leftOfLeft, middle, right}
 }
