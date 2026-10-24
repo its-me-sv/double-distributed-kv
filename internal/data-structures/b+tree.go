@@ -183,3 +183,65 @@ func bNodeAppendRange(new, old BNode, dstNew, srcOld uint16, n uint16) {
 		bNodeAppendKV(new, dst, old.getPtr(src), old.getKey(src), old.getVal(src))
 	}
 }
+
+// splitting oversized nodes into 2
+func bNodeSplitInto2(left, right, old BNode) {
+	utils.Assert(old.nkeys() >= 2)
+	// initial size
+	nLeft := old.nkeys() / 2
+
+	// fitting left half
+	leftBytes := func() uint16 {
+		return 4 + 8*nLeft + 2*nLeft + old.getOffset(nLeft)
+	}
+	for leftBytes() > BTREE_PAGE_SIZE {
+		nLeft -= 1
+	}
+	utils.Assert(nLeft >= 1)
+
+	// fitting right half
+	rightBytes := func() uint16 {
+		return old.nbytes() - leftBytes() + 4
+	}
+	for rightBytes() > BTREE_PAGE_SIZE {
+		nLeft += 1
+	}
+	utils.Assert(nLeft < old.nkeys())
+	nRight := old.nkeys() - nLeft
+
+	// new nodes
+	left.setHeader(old.btype(), nLeft)
+	right.setHeader(old.btype(), nRight)
+	bNodeAppendRange(left, old, 0, 0, nLeft)
+	bNodeAppendRange(right, old, 0, nLeft, nRight)
+
+	// left half could still be too big
+	utils.Assert(right.nbytes() <= BTREE_PAGE_SIZE)
+}
+
+// splitting too large oversized nodes into 3
+func bNodeSplitInto3(old BNode) (uint16, [3]BNode) {
+	// no splitting - 1 node
+	if old.nbytes() <= BTREE_PAGE_SIZE {
+		old = old[:BTREE_PAGE_SIZE]
+		return 1, [3]BNode{old}
+	}
+
+	left := BNode(make([]byte, 2*BTREE_PAGE_SIZE))
+	right := BNode(make([]byte, BTREE_PAGE_SIZE))
+	bNodeSplitInto2(left, right, old)
+
+	// not too large but just oversized - 2 nodes
+	if left.nbytes() <= BTREE_PAGE_SIZE {
+		left := left[:BTREE_PAGE_SIZE]
+		return 2, [3]BNode{left, right}
+	}
+
+	// when too large oversized - 3 nodes
+	leftOfLeft := BNode(make([]byte, BTREE_PAGE_SIZE))
+	middle := BNode(make([]byte, BTREE_PAGE_SIZE))
+	bNodeSplitInto2(leftOfLeft, middle, left)
+	utils.Assert(leftOfLeft.nbytes() <= BTREE_PAGE_SIZE)
+
+	return 3, [3]BNode{leftOfLeft, middle, right}
+}
