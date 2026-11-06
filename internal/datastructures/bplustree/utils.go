@@ -36,11 +36,14 @@ func LeafSet(new, old Node, key, val []byte) {
 }
 
 // use to find key or closet pos to key to maintain sortorder
+// assumption - first key is a sentinel (empty key) that sorts before
+// every other key, so it is skipped and the result never underflows
 func NodeLookupLS(node Node, key []byte) uint16 {
 	nkeys := node.nkeys()
+	utils.Assert(nkeys > 0)
 
 	var i uint16
-	for i = 0; i < nkeys; i += 1 {
+	for i = 1; i < nkeys; i += 1 {
 		cmp := bytes.Compare(node.GetKey(i), key)
 		if cmp == 0 {
 			return i

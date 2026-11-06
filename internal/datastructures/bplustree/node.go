@@ -46,17 +46,17 @@ func (node Node) SetHeader(btype uint16, nkeys uint16) {
 }
 
 // read child pointers (internal node)
-func (node Node) getPtr(idx uint16) uint16 {
+func (node Node) getPtr(idx uint16) uint64 {
 	utils.Assert(idx < node.nkeys())
 	pos := 4 + 8*idx
-	return binary.LittleEndian.Uint16(node[pos:])
+	return binary.LittleEndian.Uint64(node[pos:])
 }
 
 // write child pointers (internal node)
-func (node Node) setPtr(idx uint16, val uint16) {
+func (node Node) setPtr(idx uint16, val uint64) {
 	utils.Assert(idx < node.nkeys())
 	pos := 4 + 8*idx
-	binary.LittleEndian.PutUint16(node[pos:], val)
+	binary.LittleEndian.PutUint64(node[pos:], val)
 }
 
 // read offset array (to locate nth key)
@@ -70,7 +70,7 @@ func (node Node) getOffset(idx uint16) uint16 {
 
 // write offset value array
 func (node Node) setOffset(idx uint16, value uint16) {
-	pos := 4*8*node.nkeys() + 2*(idx-1)
+	pos := 4 + 8*node.nkeys() + 2*(idx-1)
 	binary.LittleEndian.PutUint16(node[pos:], value)
 }
 
@@ -107,7 +107,7 @@ func (node Node) nbytes() uint16 {
 // key, val - the KV pair (empty for internal nodes)
 // assumption - keys are added in order because uses previous
 // values of the offsets array to locate the KV
-func NodeAppendKV(node Node, idx uint16, ptr uint16, key []byte, val []byte) {
+func NodeAppendKV(node Node, idx uint16, ptr uint64, key []byte, val []byte) {
 	// pointers
 	node.setPtr(idx, ptr)
 
